@@ -34,6 +34,7 @@ private:
 	unsigned int currentobstacletime;
 	bool reset;
 	std::vector<geom2d::Poly> obstacles;
+	std::vector<Color> obstacleColors;
 };
 
 static unsigned long frametime = 50;	// in milliseconds
@@ -42,10 +43,21 @@ static bool echo;
 static bool save;
 static std::string level;
 static std::vector<unsigned int> controls;
+static GridMap *trafficMap;
+static unsigned int windowWidth, windowHeight;
+
+static unsigned int zoomSquare = 0;
 
 static geom2d::Pt scale(1,1);
 static geom2d::Pt start;
 static geom2d::Pt goal;
+
+static bool minimap;
+static geom2d::Pt miniMapSize;
+static double miniMapScale;
+static double miniMapBorderWidth;
+static double minimapXOffset;
+static double minimapYOffset;
 
 static void parseargs(int, const char*[]);
 static void helpmsg(int);
@@ -66,16 +78,57 @@ int main(int argc, const char *argv[]) {
 	Traffic traffic(f);
 	fclose(f);
 
-	unsigned int width = 800;
-	unsigned int height = 600;
+	trafficMap = traffic.map;
 
-	scale.x = (double)width / (double)traffic.map->w;
-	scale.y = (double)height / (double)traffic.map->h;
+	windowWidth = 800;
+	windowHeight = 600;
 
-	WatchUi ui(width, height, save, traffic.map, controls);
+	if(zoomSquare == trafficMap->w && zoomSquare == trafficMap->h) {
+		zoomSquare = 0;
+		fprintf(stderr, "zoom size is too big, disabling zoom option\n");
+	}
+	else {
+		if(zoomSquare >= trafficMap->w) {
+			zoomSquare = trafficMap->w;
+			fprintf(stderr, "zoom size is too big, clipping to map width\n");
+		}
+		else if(zoomSquare >= trafficMap->h) {
+			zoomSquare = trafficMap->h;
+			fprintf(stderr, "zoom size is too big, clipping to map height\n");
+		}
+	}
+
+	if(zoomSquare != 0) {
+		scale.x = (double)windowWidth / (double)zoomSquare;
+		scale.y = (double)windowHeight / (double)zoomSquare;
+
+		minimap = true;
+		miniMapBorderWidth = 2.;
+		if(trafficMap->w >= trafficMap->h) {
+			miniMapSize.x = (double)windowWidth * 0.25;
+			miniMapScale = miniMapSize.x / (double)trafficMap->w;
+			miniMapSize.y = miniMapScale * (double)trafficMap->h;
+		}
+		else {
+			miniMapSize.y = (double)windowHeight * 0.25;
+			miniMapScale = miniMapSize.y / (double)trafficMap->h;
+			miniMapSize.x = miniMapScale * (double)trafficMap->w;
+		}
+		minimapXOffset = (double)windowWidth - miniMapSize.x - miniMapBorderWidth - 5.;
+		minimapYOffset = miniMapBorderWidth + 2.;
+
+	} else {
+		scale.x = (double)windowWidth / (double)traffic.map->w;
+		scale.y = (double)windowHeight / (double)traffic.map->h;
+	}
+
+	WatchUi ui(windowWidth, windowHeight, save, traffic.map, controls);
 
 	std::pair<int,int> s = traffic.map->coord(traffic.start);
 	std::pair<int,int> g = traffic.map->coord(traffic.finish);
+
+	start.x = s.first;
+	start.y = s.second;
 
 	ui.loc.x = s.first;
 	ui.loc.y = s.second;
@@ -90,15 +143,15 @@ static void parseargs(int argc, const char *argv[]) {
 			helpmsg(0);
 		} else if (strcmp(argv[i], "-f") == 0) {
 			frametime = strtol(argv[++i], NULL, 10);
-			i++;
 		} else if (strcmp(argv[i], "-d") == 0) {
 			delay = strtol(argv[++i], NULL, 10);
 			delay *= 1000;
-			i++;
 		} else if (strcmp(argv[i], "-e") == 0) {
 			echo = true;
 		} else if (strcmp(argv[i], "-s") == 0) {
 			save = true;
+		} else if (strcmp(argv[i], "-z") == 0) {
+			zoomSquare = strtol(argv[++i], NULL, 10);
 		} else {
 			printf("Unknown option %s", argv[i]);
 			helpmsg(1);
@@ -110,6 +163,7 @@ static void helpmsg(int status) {
 	puts("Usage: watch [options]");
 	puts("Options:");
 	puts("	-h	print this help message");
+	puts("	-z	zoom size");
 	puts("	-d	delay in seconds before playing");
 	puts("	-f	frame rate in milliseconds (default 20)");
 	puts("	-e	echo the input to standard output");
@@ -162,8 +216,8 @@ void WatchUi::move() {
 		if(reset) {
 			reset = false;
 			currentobstacletime = 0;
-			loc.x = 0;
-			loc.y = 0;
+			loc.x = start.x;
+			loc.y = start.y;
 		}
 		else {
 			loc.x += gridmap->mvs[*iter].dx;
@@ -187,9 +241,13 @@ void WatchUi::move() {
 				 o2.first + 1., o2.second + 1.,
 				 (double)o2.first, o2.second + 1.
 			);
-		obs.scale(scale.x, scale.y);
 		obstacles.push_back(obs);
 	}
+
+	if(obstacleColors.size() <= 0)
+		for(unsigned int i = 0; i < obstacles.size(); i++)
+			obstacleColors.push_back(Color(0, 0, rand() / (double)RAND_MAX));
+//			obstacleColors.push_back(Image::black);
 
 	currentframe++;
 	currentobstacletime++;
@@ -198,24 +256,94 @@ void WatchUi::move() {
 void WatchUi::draw() {
 	scene.clear();
 
+
+
+	unsigned int xQuadrant = minimap ? (unsigned int)loc.x / zoomSquare : 0;
+	unsigned int yQuadrant = minimap ? (unsigned int)loc.y / zoomSquare : 0;
+
+	double xmin = (double)xQuadrant * (double)zoomSquare;
+	double ymin = (double)yQuadrant * (double)zoomSquare;
+	double xmax = (double)xQuadrant * (double)zoomSquare + (double)zoomSquare;
+	double ymax = (double)yQuadrant * (double)zoomSquare + (double)zoomSquare;
+
+	if(xmin < 0) xmin = 0;
+	else if(xmax >= trafficMap->w) xmin = trafficMap->w- zoomSquare;
+	if(ymin < 0) ymin = 0;
+	else if(ymax >= trafficMap->h) ymin =  trafficMap->h - zoomSquare;
+
 	geom2d::Poly g(4,
 		       goal.x, goal.y,
 		       goal.x + 1., goal.y,
 		       goal.x + 1., goal.y + 1.,
 		       goal.x, goal.y + 1.
 		);
+
+	geom2d::Poly miniG = g;
+	miniG.scale(miniMapScale, miniMapScale);
+	miniG.translate(minimapXOffset, minimapYOffset);
+
+	if(minimap) {
+		g.translate(-xmin, -ymin);
+	}
 	g.scale(scale.x, scale.y);
 	scene.add(new Scene::Poly(g, Image::green, -1));
 
 	geom2d::Poly l(4,
-		       loc.x, loc.y,
-		       loc.x + 1., loc.y,
-		       loc.x + 1., loc.y + 1.,
-		       loc.x, loc.y + 1.
-		);
+		loc.x, loc.y,
+		loc.x + 1., loc.y,
+		loc.x + 1., loc.y + 1.,
+		loc.x, loc.y + 1.
+	);
+
+	geom2d::Poly miniL = l;
+	miniL.scale(miniMapScale, miniMapScale);
+	miniL.translate(minimapXOffset, minimapYOffset);
+
+	if(minimap) {
+		l.translate(-xmin, -ymin);
+	}
 	l.scale(scale.x, scale.y);
 	scene.add(new Scene::Poly(l, Image::red, -1));
 
-	for(unsigned int i = 0; i < obstacles.size(); i++)
-		scene.add(new Scene::Poly(obstacles[i], Color(0.75,0.75,0.75), -1));
+	std::vector<geom2d::Poly> miniObs;
+	for(unsigned int i = 0; i < obstacles.size(); i++) {
+		if(minimap) {
+			geom2d::Poly miniOb = obstacles[i];
+			miniOb.scale(miniMapScale, miniMapScale);
+			miniOb.translate(minimapXOffset, minimapYOffset);
+			miniObs.push_back(miniOb);
+
+			obstacles[i].translate(-xmin, -ymin);
+		}
+		obstacles[i].scale(scale.x, scale.y);
+
+		scene.add(new Scene::Poly(obstacles[i], obstacleColors[i], -1));
+	}
+
+	if(minimap) {
+		geom2d::Poly minimapBackground(4,0.,0.,1.,0.,1.,1.,0.,1.);
+		minimapBackground.scale(miniMapSize.x + miniMapBorderWidth, 
+								miniMapSize.y + miniMapBorderWidth);
+		minimapBackground.translate(minimapXOffset, minimapYOffset);
+		scene.add(new Scene::Poly(minimapBackground, Image::white,-1));
+
+		scene.add(new Scene::Poly(miniG, Image::green, -1));
+		scene.add(new Scene::Poly(miniL, Image::red, -1));
+
+		for(unsigned int i = 0; i < miniObs.size(); i++)
+			scene.add(new Scene::Poly(miniObs[i], obstacleColors[i], -1));
+
+		geom2d::Poly minimapBorder(4,0.,0.,1.,0.,1.,1.,0.,1.);
+		minimapBorder.scale(miniMapSize.x+2, miniMapSize.y+2);
+		minimapBorder.translate(minimapXOffset-1, minimapYOffset-1);
+		scene.add(new Scene::Poly(minimapBorder, Image::black, miniMapBorderWidth));
+
+		geom2d::Poly z(4,0.,0.,1.,0.,1.,1.,0.,1.);
+		z.scale(miniMapScale, miniMapScale);
+		z.scale((double)zoomSquare, (double)zoomSquare);
+		z.translate(xmin * miniMapScale, ymin * miniMapScale);
+		z.translate(minimapXOffset, minimapYOffset);
+	
+		scene.add(new Scene::Poly(z, Image::red));
+	}
 }
