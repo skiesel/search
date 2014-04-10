@@ -10,8 +10,6 @@
 #include "arastar.hpp"
 #include "lsslrtastar.hpp"
 #include "fhatlrtastar.hpp"
-#include "dtastar-dump.hpp"
-#include "dtastar.hpp"
 
 #include <cstddef>
 #include <cstdio>
@@ -91,14 +89,10 @@ template<class D> SearchAlgorithm<D> *getsearch(int argc, const char *argv[]) {
 		return new ArastarMon<D>(argc, argv);
 	else if (strcmp(argv[1], "arastarnora") == 0)
 		return new ArastarNORA<D>(argc, argv);
-	else if (strcmp(argv[1], "dtastar-dump") == 0)
-		return new Dtastar_dump<D>(argc, argv);
 	else if (strcmp(argv[1], "lsslrtastar2") == 0)
 		return new Lsslrtastar2<D>(argc, argv);
 	else if (strcmp(argv[1], "fhatlrtastar") == 0)
 		return new Fhatlrtastar<D>(argc, argv);
-	else if (strcmp(argv[1], "dtastar") == 0)
-		return new Dtastar<D>(argc, argv);
 
 	fatal("Unknown algorithm: %s", argv[1]);
 	return NULL;	// Unreachable
