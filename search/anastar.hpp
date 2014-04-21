@@ -9,7 +9,7 @@
 #include <cerrno>
 #include <string>
 
-template <class D> struct ANAstar : public SearchAlgorithm<D> {
+template <class D> struct Anastar : public SearchAlgorithm<D> {
   typedef typename D::State State;
   typedef typename D::PackedState PackedState;
   typedef typename D::Cost Cost;
@@ -49,14 +49,13 @@ template <class D> struct ANAstar : public SearchAlgorithm<D> {
       // potential search maximizes potential!
       return a->potential > b->potential;
     }
-    static void updatePotential(Node* a){
+    static void updatePotential(Node* a, Cost cost){
       a->potential = (cost - a->g) / a-> h;
     }
   };
 
   Anastar(int argc, const char *argv[]) :
-    SearchAlgorithm<D>(argc, argv), closed(30000001),
-    incons(30000001), cost(-1) {
+    SearchAlgorithm<D>(argc, argv), closed(30000001), cost(-1) {
     nodes = new Pool<Node>();
   }
 
@@ -65,8 +64,6 @@ template <class D> struct ANAstar : public SearchAlgorithm<D> {
   }
 
   void search(D &d, typename D::State &s0) {
-    bool optimal = false;
-    rowhdr();
     this->start();
     closed.init(d);
     
@@ -102,7 +99,6 @@ template <class D> struct ANAstar : public SearchAlgorithm<D> {
     closed.prstats(stdout, "closed ");
     dfpair(stdout, "open list type", "%s", "binary heap");
     dfpair(stdout, "node size", "%u", sizeof(Node));
-    dfpair(stdout, "weight", "%lg", wt);
   }
 
   void expand(D &d, Node *n, State &state) {
@@ -127,15 +123,14 @@ template <class D> struct ANAstar : public SearchAlgorithm<D> {
     Node *dup = static_cast<Node*>(closed.find(kid->state, hash));
     if (dup) {
       this->res.dups++;
-      if (dropdups || kid->g >= dup->g) {
+      if (kid->g >= dup->g) {
         nodes->destruct(kid);
         return;
       }
       if (dup->openind < 0)
         this->res.reopnd++;
       
-      updatePotential(dup);
-      dup->h = h; 
+      updatePotential(dup, cost);
       dup->g = kid->g;
       dup->parent = parent;
       dup->op = op;
@@ -144,7 +139,7 @@ template <class D> struct ANAstar : public SearchAlgorithm<D> {
       nodes->destruct(kid);
     } else {
       typename D::Cost h = d.h(e.state);
-      updatePotential(kid);
+      updatePotential(kid, cost);
       kid->h = h;
       kid->parent = parent;
       kid->op = op;
@@ -160,7 +155,7 @@ template <class D> struct ANAstar : public SearchAlgorithm<D> {
     n0->g = Cost(0);
     typename D::Cost h = d.h(s0);
     n0->h = h;
-    updatePotential(n0);
+    updatePotential(n0, cost);
     n0->op = n0->pop = D::Nop;
     n0->parent = NULL;
     return n0;
@@ -169,5 +164,5 @@ template <class D> struct ANAstar : public SearchAlgorithm<D> {
   BinHeap<Node, Node*> open;
   ClosedList<Node, Node, D> closed;
   Pool<Node> *nodes;
-  double cost;	// solution cost, defines node potential
+  Cost cost;	// solution cost, defines node potential
 };
