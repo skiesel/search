@@ -46,11 +46,15 @@ template <class D> struct Anastar : public SearchAlgorithm<D> {
     static bool pred(Node *a, Node *b) {
       if (a->potential == b->potential)
         return a->g > b->g;
-      // potential search maximizes potential!
-      return a->potential > b->potential;
+      return a->potential < b->potential;
     }
+
     static void updatePotential(Node* a, Cost cost){
-      a->potential = (cost - a->g) / a-> h;
+      if(a->g != cost){
+        a->potential = a->h / (cost - a->g);
+      }else{
+        a->potential = 0;
+      }
     }
   };
 
