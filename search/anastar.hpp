@@ -61,6 +61,9 @@ template <class D> struct Anastar : public SearchAlgorithm<D> {
   Anastar(int argc, const char *argv[]) :
     SearchAlgorithm<D>(argc, argv), closed(30000001), cost(-1) {
     nodes = new Pool<Node>();
+    if(cost == -1){
+      cost = std::numeric_limits<double>::infinity(); // per skiesel
+    }
   }
 
   ~Anastar() {
