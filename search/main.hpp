@@ -8,6 +8,7 @@
 #include "bugsy.hpp"
 #include "bugsy-slim.hpp"
 #include "arastar.hpp"
+#include "anastar.hpp"
 #include "lsslrtastar.hpp"
 #include "fhatlrtastar.hpp"
 
