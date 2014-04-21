@@ -74,13 +74,23 @@ template <class D> struct Anastar : public SearchAlgorithm<D> {
     while (!open.empty() && !SearchAlgorithm<D>::limit()) {
       Node *n = *open.pop();
       State buf, &state = d.unpack(buf, n->state);
-      
+      if(n->g >= cost) continue; // just skip nodes that are no better than incumbent
+
       if (d.isgoal(state)) {
         solpath<D, Node>(d, n, this->res);
-        // and update all of the nodes on open here -- JTT
-      }
+        cost = d->g; // Update incumbent cost appropriately
 
-      expand(d, n, state);
+        for(long i = 0; i < open.size(); i++){ // update all potential values
+          Node *n = open.at(i);
+          updatePotential(n);
+        }
+
+        open.reinit(); // re-heapify according to new potential values
+
+      }else{
+        //no reason to expand past a goal state, so put expand here
+        expand(d, n, state);
+      }
     }
     this->finish();
   }
