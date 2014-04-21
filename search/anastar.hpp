@@ -48,14 +48,6 @@ template <class D> struct Anastar : public SearchAlgorithm<D> {
         return a->g > b->g;
       return a->potential < b->potential;
     }
-
-    static void updatePotential(Node* a, Cost cost){
-      if(a->g != cost){
-        a->potential = a->h / (cost - a->g);
-      }else{
-        a->potential = 0;
-      }
-    }
   };
 
   Anastar(int argc, const char *argv[]) :
@@ -68,6 +60,14 @@ template <class D> struct Anastar : public SearchAlgorithm<D> {
 
   ~Anastar() {
     delete nodes;
+  }
+
+  static void updatePotential(Node *a, Cost cost){
+      if(a->g != cost){
+        a->potential = a->h / (cost - a->g);
+      }else{
+        a->potential = 0;
+      }
   }
 
   void search(D &d, typename D::State &s0) {
@@ -85,11 +85,11 @@ template <class D> struct Anastar : public SearchAlgorithm<D> {
 
       if (d.isgoal(state)) {
         solpath<D, Node>(d, n, this->res);
-        cost = d->g; // Update incumbent cost appropriately
+        cost = n->g; // Update incumbent cost appropriately
 
         for(long i = 0; i < open.size(); i++){ // update all potential values
           Node *n = open.at(i);
-          updatePotential(n);
+          updatePotential(n,cost);
         }
 
         open.reinit(); // re-heapify according to new potential values
