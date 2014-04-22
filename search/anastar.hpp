@@ -9,6 +9,9 @@
 #include <cerrno>
 #include <string>
 
+void dfrowhdr(FILE*, const char*, unsigned int ncols, ...);
+void dfrow(FILE*, const char*, const char*, ...);
+
 template <class D> struct Anastar : public SearchAlgorithm<D> {
   typedef typename D::State State;
   typedef typename D::PackedState PackedState;
@@ -44,8 +47,10 @@ template <class D> struct Anastar : public SearchAlgorithm<D> {
     }
 
     static bool pred(Node *a, Node *b) {
+      //      printf("%f %f %f vs ", (double)a->g, (double)a->h, a->potential);
+      //      printf("%f %f %f\n", (double)b->g, (double)b->h, b->potential);
       if (a->potential == b->potential)
-        return a->g > b->g;
+        return a->h < b->h;
       return a->potential < b->potential;
     }
   };
@@ -63,17 +68,39 @@ template <class D> struct Anastar : public SearchAlgorithm<D> {
   }
 
   static void updatePotential(Node *a, double cost){
-      if(a->g != cost){
+    if(cost == std::numeric_limits<double>::infinity()){
+      a->potential = a->h;
+      //      printf("setting potential to a number: %f\n", (double)a->h);
+    }else if(a->g != cost){
+      //      printf("setting potential to a number: %f %f %f", cost, (double) a->h, (double) a->g);
         a->potential = a->h / (cost - a->g);
+        //printf("%f\n", a->potential);
       }else{
-        a->potential = 0;
+      //printf("setting potential to 0!\n");
+      a->potential = 0;
       }
   }
 
+  // rowhdr outputs the incumbent solution row header line.
+  void rowhdr() {
+    dfrowhdr(stdout, "incumbent", 7, "num", "nodes expanded",
+             "nodes generated", "weight", "solution bound", "solution cost",
+             "wall time");
+  }
+
+  // row outputs an incumbent solution row.
+  void row(unsigned long n, double epsprime) {
+    dfrow(stdout, "incumbent", "uuugggg", n, this->res.expd,
+          this->res.gend, 1, epsprime, cost,
+          walltime() - this->res.wallstart);
+  }
+
+
   void search(D &d, typename D::State &s0) {
+    this->rowhdr();
     this->start();
     closed.init(d);
-    
+    unsigned long numSols = 0;
     Node *n0 = init(d, s0);
     closed.add(n0);
     open.push(n0);
@@ -84,9 +111,10 @@ template <class D> struct Anastar : public SearchAlgorithm<D> {
       if(n->g >= cost) continue; // just skip nodes that are no better than incumbent
 
       if (d.isgoal(state)) {
+        numSols++;
         solpath<D, Node>(d, n, this->res);
         cost = n->g; // Update incumbent cost appropriately
-
+        this->row(numSols, cost);
         for(long i = 0; i < open.size(); i++){ // update all potential values
           Node *n = open.at(i);
           updatePotential(n,cost);
@@ -156,12 +184,12 @@ template <class D> struct Anastar : public SearchAlgorithm<D> {
       nodes->destruct(kid);
     } else {
       typename D::Cost h = d.h(e.state);
-      updatePotential(kid, cost);
       kid->h = h;
       kid->parent = parent;
       kid->op = op;
       kid->pop = e.revop;
       closed.add(kid, hash);
+      updatePotential(kid, cost);
       open.push(kid);
     }
   }
