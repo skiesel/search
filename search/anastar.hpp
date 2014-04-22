@@ -62,7 +62,7 @@ template <class D> struct Anastar : public SearchAlgorithm<D> {
     delete nodes;
   }
 
-  static void updatePotential(Node *a, Cost cost){
+  static void updatePotential(Node *a, double cost){
       if(a->g != cost){
         a->potential = a->h / (cost - a->g);
       }else{
@@ -181,5 +181,5 @@ template <class D> struct Anastar : public SearchAlgorithm<D> {
   BinHeap<Node, Node*> open;
   ClosedList<Node, Node, D> closed;
   Pool<Node> *nodes;
-  Cost cost;	// solution cost, defines node potential
+  double cost;	// solution cost, defines node potential
 };
