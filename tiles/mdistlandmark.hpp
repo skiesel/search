@@ -6,6 +6,8 @@
 #include "mdist.hpp"
 #include "packed.hpp"
 
+#include <iostream>
+
 class TilesMdistLandmark : public Tiles {
 public:
 
@@ -98,7 +100,7 @@ public:
 	}
 
 	State &unpack(State &buf, PackedState &pkd) const {
-		buf.b = pkd.unpack_md(md, buf.ts, &buf.h);
+		buf.b = pkd.unpack_mdlandmark(md, tilesToConsider, buf.ts, &buf.h);
 		return buf;
 	}
 
@@ -111,18 +113,14 @@ public:
 
 	TilesMdist::State toBaseDomain(TilesMdistLandmark::State& tl) const {
 		TilesMdist::State s;
-		for(unsigned int i = 0; i < Ntiles; i++) {
-			s.ts[i] = tl.ts[i];
-		}
 		s.b = tl.b;
 		s.h = 0;
-
 		for (unsigned int i = 0; i < Ntiles; i++) {
+			s.ts[i] = tl.ts[i];
 			if (s.ts[i] != 0) {
 				s.h += md[s.ts[i]][i];
 			}
 		}
-
 		return s;
 	}
 

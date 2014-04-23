@@ -1,4 +1,6 @@
 // Copyright © 2013 the Search Authors under the MIT license. See AUTHORS for the list of authors.
+#pragma once
+
 #include "../search/search.hpp"
 #include "../utils/pool.hpp"
 
@@ -35,7 +37,7 @@ template <class D, bool speedy = false> struct Greedy : public SearchAlgorithm<D
 		static int getind(const Node *n) {
 			return n->openind;
 		}
-	
+
 		static bool pred(Node *a, Node *b) {
 			return a->h < b->h;
 		}

@@ -4,7 +4,7 @@
 #include <cstdlib>
 #include <limits>
 #include <vector>
-
+#include <iostream>
 TilesMdistLandmark::TilesMdistLandmark(TilesMdist& d, TilesMdist::State &s,
 					 unsigned int howManyLs) : howManyLs(howManyLs) {
 
@@ -19,14 +19,14 @@ TilesMdistLandmark::TilesMdistLandmark(TilesMdist& d, TilesMdist::State &s,
 	}
 
 	for(unsigned int i = 0; i < Ntiles; i++) {
-		init[i] = d.init[i];
+		init[i] = s.ts[i];
 		goalpos[i] = d.goalpos[i];
 		for(unsigned int j = 0; j < Ntiles; j++) {
 			md[i][j] = d.md[i][j];
 		}
 		unsigned int row = i / Width;
 		unsigned int col = i % Width;
-		if(row <= minRow || col <= minCol) {
+		if(row >= minRow || (row < minRow && col >= minCol)) {
 			tilesToConsider[i] = true;
 		} else {
 			tilesToConsider[i] = false;
@@ -40,7 +40,7 @@ TilesMdistLandmark::State TilesMdistLandmark::initialstate() {
 	for (unsigned int i = 0; i < Ntiles; i++) {
 		if (init[i] == 0)
 			s.b = i;
-		else
+		else if(tilesToConsider[init[i]])
 			s.h += md[init[i]][i];
 		s.ts[i] = init[i];
 	}

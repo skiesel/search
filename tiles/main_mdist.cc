@@ -52,20 +52,21 @@ static SearchAlgorithm<TilesMdist> *get(int argc, const char *argv[]) {
 void landmarkBasedSearch(TilesMdist& d, int argc, const char *argv[]) {
 	LandmarkBasedSearch<TilesMdist, TilesMdistLandmark> *srch =
 		new LandmarkBasedSearch<TilesMdist, TilesMdistLandmark>(argc, argv);
-/*
-	unsigned int decompSize = d.Ncakes;
+
+	unsigned int decompSize = d.Width;
 	for (int i = 0; i < argc; i++) {
 		if (strcmp(argv[i], "-decompsize") == 0) {
 			decompSize = strtol(argv[++i], NULL, 10);
-			}
 		}
+	}
 
-        srch->setLandmarkGenerator(new PancakeLandmarkGenerator(d, decompSize));
+        srch->setLandmarkGenerator(new TilesMdistLandmarkGenerator(d, decompSize));
 
-	typename Pancake::State s0 = d.initialstate();
+	typename TilesMdist::State s0 = d.initialstate();
 	dfpair(stdout, "initial heuristic", "%f", (double) d.h(s0));
 	dfpair(stdout, "initial distance", "%f", (double) d.d(s0));
 	dfpair(stdout, "algorithm", argv[1]);
+	dfpair(stdout, "landmarks", "%u", decompSize);
 
 	try {
 		srch->search(d, s0);
@@ -82,6 +83,6 @@ void landmarkBasedSearch(TilesMdist& d, int argc, const char *argv[]) {
                 dfpair(stdout, "final sol cost", "%f", -1.0);
 		}
         srch->output(stdout);
-*/
+
 	delete srch;
 }

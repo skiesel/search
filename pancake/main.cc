@@ -38,6 +38,7 @@ void landmarkBasedSearch(Pancake& d, int argc, const char *argv[]) {
 	dfpair(stdout, "initial heuristic", "%f", (double) d.h(s0));
 	dfpair(stdout, "initial distance", "%f", (double) d.d(s0));
 	dfpair(stdout, "algorithm", argv[1]);
+	dfpair(stdout, "landmarks", "%u", decompSize);
 
 	try {
 		srch->search(d, s0);

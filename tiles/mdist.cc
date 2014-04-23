@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <limits>
 #include <vector>
+#include <iostream>
 
 TilesMdist::TilesMdist(FILE *in) : Tiles(in) {
 	initmd();

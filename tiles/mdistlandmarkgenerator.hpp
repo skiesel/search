@@ -3,6 +3,8 @@
 #include "mdist.hpp"
 #include "mdistlandmark.hpp"
 
+#include <iostream>
+
 class TilesMdistLandmarkGenerator : public LandmarkGenerator<TilesMdist, TilesMdistLandmark> {
 public:
         TilesMdistLandmarkGenerator(TilesMdist &baseMdist, unsigned int numLandmarks) :
@@ -13,7 +15,7 @@ public:
                 assert(landmarkNum < numLandmarks);
 
 		unsigned int biggest = domain.Width > domain.Height ? domain.Width : domain.Height;
-                unsigned int ls =  biggest / landmarkNum;
+                unsigned int ls =  (biggest * (landmarkNum + 1)) / biggest;
 
                 if(numLandmarks == (landmarkNum+1))
 			ls = biggest;
