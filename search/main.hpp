@@ -8,6 +8,7 @@
 #include "bugsy.hpp"
 #include "bugsy-slim.hpp"
 #include "arastar.hpp"
+#include "anastar.hpp"
 #include "lsslrtastar.hpp"
 #include "fhatlrtastar.hpp"
 
@@ -85,6 +86,8 @@ template<class D> SearchAlgorithm<D> *getsearch(int argc, const char *argv[]) {
 		return new Bugsy_slim<D>(argc, argv);
 	else if (strcmp(argv[1], "arastar") == 0)
 		return new Arastar<D>(argc, argv);
+	else if (strcmp(argv[1], "anastar") == 0)
+		return new Anastar<D>(argc, argv);
 	else if (strcmp(argv[1], "arastarmon") == 0)
 		return new ArastarMon<D>(argc, argv);
 	else if (strcmp(argv[1], "arastarnora") == 0)
