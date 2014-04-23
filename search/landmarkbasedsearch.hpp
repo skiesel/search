@@ -32,7 +32,7 @@ template <class D, class L> struct LandmarkBasedSearch : public SearchAlgorithm<
 
 		for(unsigned int i = 0; i < landmarkGenerator->getLandmarkCount(); i++) {
 
-			L landmark = landmarkGenerator->getLandmark(currentState, i);
+			L landmark = landmarkGenerator->getLandmark(domain, currentState, i);
 			typename L::State startState = landmark.initialstate();
 
 			fprintf(stderr, "landmark %u\n", i);

@@ -3,9 +3,10 @@
 #include <cstring>
 #include <vector>
 #include "tiles.hpp"
+#include "mdist.hpp"
 #include "packed.hpp"
 
-class TilesMdist : public Tiles {
+class TilesMdistLandmark : public Tiles {
 public:
 
 	typedef PackedTiles<Ntiles> PackedState;
@@ -21,14 +22,13 @@ public:
 			return true;
 		}
 	private:
-		friend class TilesMdist;
 		friend class TilesMdistLandmark;
 		Tile ts[Ntiles];
 		Pos b;
 		Cost h;
 	};
 
-	TilesMdist(FILE*);
+	TilesMdistLandmark(TilesMdist&, TilesMdist::State&, unsigned int);
 
 	State initialstate();
 
@@ -39,7 +39,7 @@ public:
 	bool isgoal(State &s) const { return s.h == 0; }
 
 	struct Operators {
-		Operators(TilesMdist& d, State &s) :
+		Operators(TilesMdistLandmark& d, State &s) :
 			n(d.ops[s.b].n), mvs(d.ops[s.b].mvs) { }
 
 		unsigned int size() const {
@@ -65,7 +65,7 @@ public:
 		Cost revcost;
 		State &state;
 
-		Edge(TilesMdist &d, State &s, Oper op) :
+		Edge(TilesMdistLandmark &d, State &s, Oper op) :
 				cost(1), revop(s.b), revcost(1), state(s), oldh(s.h) {
 
 			if (op == Ident) {
@@ -75,7 +75,7 @@ public:
 
 			Tile t = state.ts[op];
 			state.ts[state.b] = t;
-			state.h += d.incr[t][op][state.b];
+			state.h = d.computeMdist(state);
 			state.b = op;
 		}
 
@@ -88,7 +88,7 @@ public:
 		}
 
 	private:
-		friend class TilesMdist;
+		friend class TilesMdistLandmark;
 		Cost oldh;
 	};
 
@@ -109,14 +109,28 @@ public:
 
 	Cost pathcost(const std::vector<State>&, const std::vector<Oper>&);
 
-protected:
+	TilesMdist::State toBaseDomain(TilesMdistLandmark::State& tl) const {
+		TilesMdist::State s;
+		for(unsigned int i = 0; i < Ntiles; i++) {
+			s.ts[i] = tl.ts[i];
+		}
+		s.b = tl.b;
+		s.h = 0;
 
+		for (unsigned int i = 0; i < Ntiles; i++) {
+			if (s.ts[i] != 0) {
+				s.h += md[s.ts[i]][i];
+			}
+		}
+
+		return s;
+	}
+
+protected:
 	unsigned int md[Ntiles][Ntiles];
+	Cost computeMdist(const State&) const;
 
 private:
-	friend class TilesMdistLandmark;
-	void initmd();
-	void initincr();
-
-	int incr[Ntiles][Ntiles][Ntiles];
+	bool tilesToConsider[Ntiles];
+	unsigned int howManyLs;
 };

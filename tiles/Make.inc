@@ -13,6 +13,7 @@ EVERYTHING+=tiles
 TILESSRC:=\
 	tiles/tiles.cc\
 	tiles/mdist.cc\
+	tiles/mdistlandmark.cc\
 	tiles/pdb.cc\
 
 CLEAN+=$(TILESSRC:.cc=.o)

@@ -8,7 +8,7 @@ public:
 	PancakeLandmarkGenerator(Pancake &basePancake, unsigned int numLandmarks) :
 		basePancake(basePancake), numLandmarks(numLandmarks) {}
 
-	PancakeLandmark getLandmark(Pancake::State &state, unsigned int landmarkNum) {
+	PancakeLandmark getLandmark(Pancake &domain, Pancake::State &state, unsigned int landmarkNum) {
 		assert(landmarkNum < numLandmarks);
 
 		unsigned int cakes = (basePancake.Ncakes / numLandmarks) * (landmarkNum + 1);
