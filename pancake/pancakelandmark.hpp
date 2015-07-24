@@ -1,4 +1,3 @@
-// Copyright © 2013 the Search Authors under the MIT license. See AUTHORS for the list of authors.
 #pragma once
 
 #include <cstdio>
@@ -6,15 +5,12 @@
 #include <cassert>
 #include <vector>
 
-#if NCAKES >= 128
-#error Too many pancakes for char typed cost.
-#endif
-
 extern "C" unsigned long hashbytes(unsigned char[], unsigned int);
 
-class Pancake {
+class PancakeLandmark {
 public:
 	enum { Ncakes = NCAKES };
+	unsigned int landmarkPancake;
 
 	typedef int Cake;
 	typedef int Oper;
@@ -22,21 +18,20 @@ public:
 	typedef int Cost;
 
 	struct State {
-		bool eq(const Pancake*, const State &o) const {
+		bool eq(const PancakeLandmark* pl, const State &o) const {
 			for (unsigned int i = 0; i < Ncakes; i++) {
-				if (cakes[i] != o.cakes[i])
+				if (cakes[i] >= pl->landmarkPancake && cakes[i] != o.cakes[i])
 					return false;
 			}
 			return true;
 		}
 
-		unsigned long hash(const Pancake*) const {
+		unsigned long hash(const PancakeLandmark*) const {
 			return hashbytes((unsigned char *) cakes,
 						Ncakes * sizeof(Cake));
 		}
 
 	private:
-		friend class Pancake;
 		friend class PancakeLandmark;
 		friend class Undo;
 
@@ -57,9 +52,33 @@ public:
 
 	typedef State PackedState;
 
-	Pancake(FILE*);
+	PancakeLandmark(Pancake::State &s, unsigned int landmarkPancake) :
+		landmarkPancake(landmarkPancake) {
 
-	State initialstate();
+		for (unsigned int i = 0; i < Ncakes; i++)
+			init[i] = s.cakes[i];
+	}
+
+	Pancake::State toBaseDomain(PancakeLandmark::State &pls) {
+		Pancake::State s;
+
+		for (unsigned int i = 0; i < Ncakes; i++)
+			s.cakes[i] = pls.cakes[i];
+
+		s.h = Pancake::ngaps(s.cakes);
+
+		return s;
+	}
+
+	State initialstate() {
+		State s;
+
+		for (unsigned int i = 0; i < Ncakes; i++)
+			s.cakes[i] = init[i];
+		s.h = ngaps(s.cakes, landmarkPancake);
+
+		return s;
+	}
 
 	Cost h(const State &s) const {
 		return s.h;
@@ -74,7 +93,7 @@ public:
 	}
 
 	struct Operators {
-		Operators(const Pancake&, const State&) { }
+		Operators(const PancakeLandmark&, const State&) { }
 
 		unsigned int size() const {
 			return Ncakes -1 ;
@@ -91,12 +110,12 @@ public:
 		Cost revcost;
 		State &state;
 
-		Edge(Pancake &d, State &s, Oper op) :
+		Edge(PancakeLandmark &d, State &s, Oper op) :
 				cost(1), revop(op), revcost(1), state(s), oldh(s.h) {
-			bool wasgap = gap(state.cakes, op);
+			bool wasgap = gap(state.cakes, op, d.landmarkPancake);
 			state.flip(op);
 
-			bool hasgap = gap(state.cakes, op);
+			bool hasgap = gap(state.cakes, op, d.landmarkPancake);
 			if (wasgap && !hasgap)
 				state.h--;
 			if (!wasgap && hasgap)
@@ -110,7 +129,7 @@ public:
 
 	private:
 		Cost oldh;
-	};
+};
 
 	void pack(PackedState &dst, const State &s) const {
 		dst = s;
@@ -129,26 +148,43 @@ public:
 		fputc('\n', out);
 	}
 
-	Cost pathcost(const std::vector<State>&, const std::vector<Oper>&);
+	Cost pathcost(const std::vector<State> &path, const std::vector<Oper> &ops) {
+		State state = initialstate();
+		Cost cost(0);
+		for (int i = ops.size() - 1; i >= 0; i--) {
+			State copy(state);
+			Edge e(*this, copy, ops[i]);
+			assert (e.state.eq(this, path[i]));
+			state = e.state;
+			cost += e.cost;
+		}
+		assert (isgoal(state));
+		return cost;
+	}
 
-	static Cost ngaps(Cake cakes[]) {
+private:
+
+	static Cost ngaps(Cake cakes[], unsigned int landmarkPancake) {
 		Cost gaps = 0;
 
 		for (unsigned int i = 0; i < Ncakes; i++) {
-			if (gap(cakes, i))
+			if (gap(cakes, i, landmarkPancake))
 				gaps++;
 		}
 
 		return gaps;
 	}
 
-private:
-
 	// Is there a gap between cakes n and n+1?
-	static bool gap(Cake cakes[], unsigned int n) {
+	static bool gap(Cake cakes[], unsigned int n, unsigned int landmarkPancake) {
 		assert(n < Ncakes);
+
 		if (n == Ncakes-1)
 			return cakes[Ncakes-1] != Ncakes-1;
+
+		if(cakes[n] < landmarkPancake &&
+		   cakes[n+1] < landmarkPancake) return false;
+
 		return abs(cakes[n] - cakes[n+1]) != 1;
 	}
 
